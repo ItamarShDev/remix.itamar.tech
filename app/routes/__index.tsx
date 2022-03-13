@@ -1,4 +1,4 @@
-import { Link, LinksFunction, Outlet } from "remix";
+import { LinksFunction, Outlet } from "remix";
 import styles from "~/styles/layout.css";
 export const links: LinksFunction = () => {
     return [{ rel: "stylesheet", href: styles }];

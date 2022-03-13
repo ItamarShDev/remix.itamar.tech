@@ -16,7 +16,7 @@ type NewPost = {
     slug: string;
     markdown: string;
 };
-const postsPath = path.join(__dirname, "..", "posts", "en");
+const postsPath = path.join(__dirname, "..", "app", "posts", "en");
 function isValidPostAttributes(
     attributes: any
 ): attributes is PostMarkdownAttributes {
