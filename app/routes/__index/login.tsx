@@ -1,214 +1,192 @@
-import type { ActionFunction, LinksFunction } from "remix";
-import { useActionData, json, useSearchParams, Link } from "remix";
+import * as React from "react";
+import type { ActionFunction, LoaderFunction, MetaFunction } from "remix";
+import {
+  Form,
+  json,
+  Link,
+  useActionData,
+  redirect,
+  useSearchParams,
+} from "remix";
 
-import { db } from "~/utils/db.server";
-import { createUserSession, login, register } from "~/utils/session.server";
+import { createUserSession, getUserId } from "~/session.server";
+import { verifyLogin } from "~/models/user.server";
+import { validateEmail } from "~/utils";
 
-function validateUsername(username: unknown) {
-    if (typeof username !== "string" || username.length < 3) {
-        return `Usernames must be at least 3 characters long`;
-    }
-}
-
-function validatePassword(password: unknown) {
-    if (typeof password !== "string" || password.length < 6) {
-        return `Passwords must be at least 6 characters long`;
-    }
-}
-
-type ActionData = {
-    formError?: string;
-    fieldErrors?: {
-        username: string | undefined;
-        password: string | undefined;
-    };
-    fields?: {
-        loginType: string;
-        username: string;
-        password: string;
-    };
+export const loader: LoaderFunction = async ({ request }) => {
+  const userId = await getUserId(request);
+  if (userId) return redirect("/");
+  return json({});
 };
 
-const badRequest = (data: ActionData) => json(data, { status: 400 });
+interface ActionData {
+  errors?: {
+    email?: string;
+    password?: string;
+  };
+}
 
 export const action: ActionFunction = async ({ request }) => {
-    const form = await request.formData();
-    const loginType = form.get("loginType");
-    const username = form.get("username");
-    const password = form.get("password");
-    const redirectTo = form.get("redirectTo") || "/jokes";
-    if (
-        typeof loginType !== "string" ||
-        typeof username !== "string" ||
-        typeof password !== "string" ||
-        typeof redirectTo !== "string"
-    ) {
-        return badRequest({
-            formError: `Form not submitted correctly.`,
-        });
-    }
+  const formData = await request.formData();
+  const email = formData.get("email");
+  const password = formData.get("password");
+  const redirectTo = formData.get("redirectTo");
+  const remember = formData.get("remember");
 
-    const fields = { loginType, username, password };
-    const fieldErrors = {
-        username: validateUsername(username),
-        password: validatePassword(password),
-    };
-    if (Object.values(fieldErrors).some(Boolean))
-        return badRequest({ fieldErrors, fields });
+  if (!validateEmail(email)) {
+    return json<ActionData>(
+      { errors: { email: "Email is invalid" } },
+      { status: 400 }
+    );
+  }
 
-    switch (loginType) {
-        case "login": {
-            const user = await login({ username, password });
-            if (!user) {
-                return badRequest({
-                    fields,
-                    formError: `Username/Password combination is incorrect`,
-                });
-            }
-            return createUserSession(user.id, redirectTo);
-        }
-        case "register": {
-            const userExists = await db.user.findFirst({
-                where: { username },
-            });
-            if (userExists) {
-                return badRequest({
-                    fields,
-                    formError: `User with username ${username} already exists`,
-                });
-            }
-            const user = await register({ username, password });
-            if (!user) {
-                return badRequest({
-                    fields,
-                    formError: `Something went wrong trying to create a new user.`,
-                });
-            }
-            return createUserSession(user.id, redirectTo);
-        }
-        default: {
-            return badRequest({
-                fields,
-                formError: `Login type invalid`,
-            });
-        }
-    }
+  if (typeof password !== "string") {
+    return json<ActionData>(
+      { errors: { password: "Password is required" } },
+      { status: 400 }
+    );
+  }
+
+  if (password.length < 8) {
+    return json<ActionData>(
+      { errors: { password: "Password is too short" } },
+      { status: 400 }
+    );
+  }
+
+  const user = await verifyLogin(email, password);
+
+  if (!user) {
+    return json<ActionData>(
+      { errors: { email: "Invalid email or password" } },
+      { status: 400 }
+    );
+  }
+
+  return createUserSession({
+    request,
+    userId: user.id,
+    remember: remember === "on" ? true : false,
+    redirectTo: typeof redirectTo === "string" ? redirectTo : "/notes",
+  });
 };
 
-export default function Login() {
-    const actionData = useActionData<ActionData>();
-    const [searchParams] = useSearchParams();
-    return (
-        <div className="container">
-            <div className="content" data-light="">
-                <h1>Login</h1>
-                <form method="post">
-                    <input
-                        type="hidden"
-                        name="redirectTo"
-                        value={searchParams.get("redirectTo") ?? undefined}
-                    />
-                    <fieldset>
-                        <legend className="sr-only">Login or Register?</legend>
-                        <label>
-                            <input
-                                type="radio"
-                                name="loginType"
-                                value="login"
-                                defaultChecked={
-                                    !actionData?.fields?.loginType ||
-                                    actionData?.fields?.loginType === "login"
-                                }
-                            />{" "}
-                            Login
-                        </label>
-                        <label>
-                            <input
-                                type="radio"
-                                name="loginType"
-                                value="register"
-                                defaultChecked={
-                                    actionData?.fields?.loginType === "register"
-                                }
-                            />{" "}
-                            Register
-                        </label>
-                    </fieldset>
-                    <div>
-                        <label htmlFor="username-input">Username</label>
-                        <input
-                            type="text"
-                            id="username-input"
-                            name="username"
-                            defaultValue={actionData?.fields?.username}
-                            aria-invalid={Boolean(
-                                actionData?.fieldErrors?.username
-                            )}
-                            aria-errormessage={
-                                actionData?.fieldErrors?.username
-                                    ? "username-error"
-                                    : undefined
-                            }
-                        />
-                        {actionData?.fieldErrors?.username ? (
-                            <p
-                                className="form-validation-error"
-                                role="alert"
-                                id="username-error"
-                            >
-                                {actionData.fieldErrors.username}
-                            </p>
-                        ) : null}
-                    </div>
-                    <div>
-                        <label htmlFor="password-input">Password</label>
-                        <input
-                            id="password-input"
-                            name="password"
-                            defaultValue={actionData?.fields?.password}
-                            type="password"
-                            aria-invalid={
-                                Boolean(actionData?.fieldErrors?.password) ||
-                                undefined
-                            }
-                            aria-errormessage={
-                                actionData?.fieldErrors?.password
-                                    ? "password-error"
-                                    : undefined
-                            }
-                        />
-                        {actionData?.fieldErrors?.password ? (
-                            <p
-                                className="form-validation-error"
-                                role="alert"
-                                id="password-error"
-                            >
-                                {actionData.fieldErrors.password}
-                            </p>
-                        ) : null}
-                    </div>
-                    <div id="form-error-message">
-                        {actionData?.formError ? (
-                            <p className="form-validation-error" role="alert">
-                                {actionData.formError}
-                            </p>
-                        ) : null}
-                    </div>
-                    <button type="submit" className="button">
-                        Submit
-                    </button>
-                </form>
+export const meta: MetaFunction = () => {
+  return {
+    title: "Login",
+  };
+};
+
+export default function LoginPage() {
+  const [searchParams] = useSearchParams();
+  const redirectTo = searchParams.get("redirectTo") || "/notes";
+  const actionData = useActionData() as ActionData;
+  const emailRef = React.useRef<HTMLInputElement>(null);
+  const passwordRef = React.useRef<HTMLInputElement>(null);
+
+  React.useEffect(() => {
+    if (actionData?.errors?.email) {
+      emailRef.current?.focus();
+    } else if (actionData?.errors?.password) {
+      passwordRef.current?.focus();
+    }
+  }, [actionData]);
+
+  return (
+    <div className="flex min-h-full flex-col justify-center">
+      <div className="mx-auto w-full max-w-md px-8">
+        <Form method="post" className="space-y-6">
+          <div>
+            <label
+              htmlFor="email"
+              className="block text-sm font-medium text-gray-700"
+            >
+              Email address
+            </label>
+            <div className="mt-1">
+              <input
+                ref={emailRef}
+                id="email"
+                required
+                autoFocus={true}
+                name="email"
+                type="email"
+                autoComplete="email"
+                aria-invalid={actionData?.errors?.email ? true : undefined}
+                aria-describedby="email-error"
+                className="w-full rounded border border-gray-500 px-2 py-1 text-lg"
+              />
+              {actionData?.errors?.email && (
+                <div className="pt-1 text-red-700" id="email-error">
+                  {actionData.errors.email}
+                </div>
+              )}
             </div>
-            <div className="links">
-                <ul>
-                    <li>
-                        <Link to="/">Home</Link>
-                    </li>
-                    <li>
-                        <Link to="/posts">Posts</Link>
-                    </li>
-                </ul>
+          </div>
+
+          <div>
+            <label
+              htmlFor="password"
+              className="block text-sm font-medium text-gray-700"
+            >
+              Password
+            </label>
+            <div className="mt-1">
+              <input
+                id="password"
+                ref={passwordRef}
+                name="password"
+                type="password"
+                autoComplete="current-password"
+                aria-invalid={actionData?.errors?.password ? true : undefined}
+                aria-describedby="password-error"
+                className="w-full rounded border border-gray-500 px-2 py-1 text-lg"
+              />
+              {actionData?.errors?.password && (
+                <div className="pt-1 text-red-700" id="password-error">
+                  {actionData.errors.password}
+                </div>
+              )}
             </div>
-        </div>
-    );
+          </div>
+
+          <input type="hidden" name="redirectTo" value={redirectTo} />
+          <button
+            type="submit"
+            className="w-full rounded bg-blue-500  py-2 px-4 text-white hover:bg-blue-600 focus:bg-blue-400"
+          >
+            Log in
+          </button>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <input
+                id="remember"
+                name="remember"
+                type="checkbox"
+                className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              />
+              <label
+                htmlFor="remember"
+                className="ml-2 block text-sm text-gray-900"
+              >
+                Remember me
+              </label>
+            </div>
+            <div className="text-center text-sm text-gray-500">
+              Don't have an account?{" "}
+              <Link
+                className="text-blue-500 underline"
+                to={{
+                  pathname: "/join",
+                  search: searchParams.toString(),
+                }}
+              >
+                Sign up
+              </Link>
+            </div>
+          </div>
+        </Form>
+      </div>
+    </div>
+  );
 }

@@ -26,15 +26,11 @@ summary: מדוע אני לא מכניס תנאים לJSX
 
 ```jsx
 function App(props) {
-    return (
-        <div>
-            {props.isUserLoggedIn ? (
-                <UserImage {...props} />
-            ) : (
-                <Avatar {...props} />
-            )}
-        </div>
-    );
+  return (
+    <div>
+      {props.isUserLoggedIn ? <UserImage {...props} /> : <Avatar {...props} />}
+    </div>
+  );
 }
 ```
 
@@ -56,12 +52,12 @@ function App(props) {
 const UserImage = (props) => <img src={props.userImage} alt={props.userName} />;
 const Avatar = (props) => <img src="images/no-user" alt="Not logged in" />;
 const UserAvatar = (props) => {
-    if (props.isUserLoggedIn) return <UserImage {...props} />;
-    else return <Avatar {...props} />;
+  if (props.isUserLoggedIn) return <UserImage {...props} />;
+  else return <Avatar {...props} />;
 };
 
 function App(props) {
-    return <UserAvatar {...props} />;
+  return <UserAvatar {...props} />;
 }
 ```
 
@@ -71,9 +67,9 @@ function App(props) {
 
 ### להלן כמה יתרונות לגישה זו
 
--   קל יותר לכתוב טסטים
--   קל לדאבג
--   ניתוק בין לוגיקה לרנדור
--   בסקייל גדול, זה מצמצם דרמטית את סיבוכיות הקוד
+- קל יותר לכתוב טסטים
+- קל לדאבג
+- ניתוק בין לוגיקה לרנדור
+- בסקייל גדול, זה מצמצם דרמטית את סיבוכיות הקוד
 
 Happy Reacting!

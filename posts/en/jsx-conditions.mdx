@@ -26,15 +26,11 @@ Let's take a look on the following code:
 
 ```jsx
 function App(props) {
-    return (
-        <div>
-            {props.isUserLoggedIn ? (
-                <UserImage {...props} />
-            ) : (
-                <Avatar {...props} />
-            )}
-        </div>
-    );
+  return (
+    <div>
+      {props.isUserLoggedIn ? <UserImage {...props} /> : <Avatar {...props} />}
+    </div>
+  );
 }
 ```
 
@@ -58,12 +54,12 @@ Simple. In our over simplified case, we can see that both `UserImage` an `Avatar
 const UserImage = (props) => <img src={props.userImage} alt={props.userName} />;
 const Avatar = (props) => <img src="images/no-user" alt="Not logged in" />;
 const UserAvatar = (props) => {
-    if (props.isUserLoggedIn) return <UserImage {...props} />;
-    else return <Avatar {...props} />;
+  if (props.isUserLoggedIn) return <UserImage {...props} />;
+  else return <Avatar {...props} />;
 };
 
 function App(props) {
-    return <UserAvatar {...props} />;
+  return <UserAvatar {...props} />;
 }
 ```
 
@@ -73,11 +69,11 @@ When we take another look now, we can see that App component should not care how
 
 ### Some more benefits to this approach
 
--   We can add tests in a simpler way
--   We can use the Newspaper code structure approach easily
--   We can debug better
--   We decouple the logic from the render, minimising those weird an unreadable production errors
--   It will push us to use component per file approach and prevent us from having those 100 components files
--   It will prevent us from having those 1000 LoC files that are pain to get into every time we need to debug or add features
+- We can add tests in a simpler way
+- We can use the Newspaper code structure approach easily
+- We can debug better
+- We decouple the logic from the render, minimising those weird an unreadable production errors
+- It will push us to use component per file approach and prevent us from having those 100 components files
+- It will prevent us from having those 1000 LoC files that are pain to get into every time we need to debug or add features
 
 Happy Reacting!
