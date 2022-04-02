@@ -2,10 +2,6 @@ datasource db {
   provider = "sqlite"
   url      = env("DATABASE_URL")
 }
-// datasource db {
-//   provider = "postgresql"
-//   url      = env("DATABASE_URL")
-// }
 generator client {
   provider = "prisma-client-js"
 }
@@ -53,10 +49,11 @@ model Note {
   userId String
 }
 model Post {
-  slug     String @id
+  id       String @id @default(cuid())
+  slug     String @unique
+  language String @default("en")
   title    String
   markdown String
-
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }

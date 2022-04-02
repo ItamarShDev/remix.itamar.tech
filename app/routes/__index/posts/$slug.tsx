@@ -1,4 +1,4 @@
-import { marked } from "marked";
+import renderMarkdown from "~/render-markdown";
 import type { LoaderFunction } from "remix";
 import { json, LinksFunction, useLoaderData } from "remix";
 import invariant from "tiny-invariant";
@@ -16,16 +16,17 @@ export const loader: LoaderFunction = async ({ params }) => {
   invariant(params.slug, "expected params.slug");
   const post = await getPost(params.slug);
   invariant(post, "expected post to exist");
-  const html = marked(post.markdown);
+  const html = renderMarkdown(post.markdown);
+
   return json<LoaderData>({ post, html });
 };
 
 export default function PostSlug() {
   const { post, html } = useLoaderData();
   return (
-    <div>
+    <section className="bg-slate-100 px-10 py-5 leading-6">
       <h1>{post.title}</h1>
       <div dangerouslySetInnerHTML={{ __html: html }} />
-    </div>
+    </section>
   );
 }
