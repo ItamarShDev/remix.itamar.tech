@@ -1,19 +1,37 @@
 import { marked } from "marked";
 import Highlight, { defaultProps } from "prism-react-renderer";
 import { renderToStaticMarkup } from "react-dom/server";
-import scheme from "prism-react-renderer/themes/shadesOfPurple";
+import shadesOfPurple from "prism-react-renderer/themes/shadesOfPurple";
+import vsDark from "prism-react-renderer/themes/vsDark";
 
 const renderer = new marked.Renderer();
-
+function getTextClass(level) {
+  switch (level) {
+    case 6:
+      return "text-lg";
+    case 5:
+      return "text-xl";
+    case 4:
+      return "text-2xl";
+    case 3:
+      return "text-3xl";
+    case 2:
+      return "text-4xl";
+    case 1:
+      return "text-5xl";
+    default:
+      return "text-base";
+  }
+}
 renderer.heading = (text, level, raw, slugger) => {
   const id = slugger.slug(text);
   const Component = `h${level}`;
 
   return renderToStaticMarkup(
-    <Component id={id}>
-      <a
+    <Component id={id} className={getTextClass(level)}>
+      <a  
         href={`#${id}`}
-        className="pointer-events-auto text-6xl underline"
+        className="pointer-events-auto"
         dangerouslySetInnerHTML={{ __html: text }}
       ></a>
     </Component>
@@ -53,13 +71,15 @@ marked.setOptions({
   headerIds: true,
   renderer,
 });
-
-export default (markdown) => marked(markdown);
+let theme = vsDark;
+export default (markdown, isPreferDark) => {
+  theme = isPreferDark ? shadesOfPurple : vsDark;
+  return marked(markdown);
+};
 
 const Code = ({ code, language, highlight, ...props }) => {
   if (!language)
     return <code {...props} dangerouslySetInnerHTML={{ __html: code }} />;
-
   const highlightedLines = highlight
     ? highlight.split(",").reduce((lines, h) => {
         if (h.includes("-")) {
@@ -74,11 +94,10 @@ const Code = ({ code, language, highlight, ...props }) => {
         return [...lines, Number(h)];
       }, [])
     : [];
-
   return (
     <Highlight
       {...defaultProps}
-      theme={scheme}
+      theme={theme}
       code={code.trim()}
       language={language}
     >
